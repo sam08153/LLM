@@ -16,6 +16,8 @@ from langchain_core.prompts import PromptTemplate
 from langchain_classic.retrievers.self_query.base import SelfQueryRetriever
 from langchain_classic.chains.query_constructor.base import AttributeInfo
 from langchain_classic.chains import ConversationalRetrievalChain
+from agents.graph import graph, AgentState
+import uuid
 
 # Load environment variables
 load_dotenv()
@@ -84,6 +86,15 @@ class ChatResponse(BaseModel):
 
 class InsightSummary(BaseModel):
     trends: List[str]
+
+# --- Agentic Models ---
+class StrategyRequest(BaseModel):
+    sku: str
+    strategy: str # e.g., "match_lowest", "5_percent_under"
+
+class ApprovalRequest(BaseModel):
+    thread_id: str
+    approve: bool
 
 # --- Prompt Template ---
 SYSTEM_PROMPT = """You are the Shopaluru Strategic Assistant. Your goal is to help e-commerce founders extract 'Money-Making Insights' from their unstructured data (reviews, tickets, and reports).
@@ -228,6 +239,81 @@ async def get_insights():
     trends = [line.strip("- ").strip() for line in response.content.split("\n") if line.strip()][:3]
     
     return InsightSummary(trends=trends)
+
+# --- Agentic Sentinel Endpoints ---
+
+@app.post("/api/run-strategy")
+async def run_strategy(request: StrategyRequest):
+    """Start the LangGraph execution for a pricing strategy."""
+    thread_id = str(uuid.uuid4())
+    config = {"configurable": {"thread_id": thread_id}}
+    
+    # Initial state
+    initial_state = {
+        "current_sku": request.sku,
+        "strategy": request.strategy,
+        "competitor_prices": [],
+        "internal_cogs": 400.0, # Mocked COGS
+        "current_price": 499.0, # Mocked current price
+        "recommended_price": 0.0,
+        "approval_status": False,
+        "logs": [f"System: Starting {request.strategy} strategy for {request.sku}."],
+        "last_action_summary": None,
+        "is_paused": False
+    }
+    
+    # Start the graph
+    try:
+        # graph.invoke will run until it hits an interrupt (before 'executive')
+        state = graph.invoke(initial_state, config)
+        return {
+            "thread_id": thread_id,
+            "status": "paused" if state.get("is_paused") else "completed",
+            "state": state
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/approve-action")
+async def approve_action(request: ApprovalRequest):
+    """Resume the LangGraph execution after human approval."""
+    config = {"configurable": {"thread_id": request.thread_id}}
+    
+    # Get current state from checkpoint
+    current_state = graph.get_state(config)
+    if not current_state.values:
+         raise HTTPException(status_code=404, detail="Thread not found")
+    
+    # Update the state with approval status
+    if request.approve:
+        graph.update_state(config, {"approval_status": True, "logs": ["User: Approved action."]})
+        # Resume the graph (null as input because it resumes from interrupt)
+        final_state = graph.invoke(None, config)
+        return {
+            "thread_id": request.thread_id,
+            "status": "completed",
+            "state": final_state
+        }
+    else:
+        graph.update_state(config, {"approval_status": False, "logs": ["User: Rejected action."]})
+        # Just return current state with rejected status
+        return {
+            "thread_id": request.thread_id,
+            "status": "rejected",
+            "state": graph.get_state(config).values
+        }
+
+@app.get("/api/agent-status/{thread_id}")
+async def get_agent_status(thread_id: str):
+    """Fetch the latest state of an agent thread."""
+    config = {"configurable": {"thread_id": thread_id}}
+    state = graph.get_state(config)
+    if not state.values:
+         raise HTTPException(status_code=404, detail="Thread not found")
+    return {
+        "thread_id": thread_id,
+        "state": state.values
+    }
 
 if __name__ == "__main__":
     import uvicorn

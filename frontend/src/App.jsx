@@ -4,9 +4,11 @@ import { Shield, Zap, Eye, EyeOff, LayoutDashboard, Database, Activity, Bot, Use
 import Layout from './components/Layout';
 import Sidebar from './components/Sidebar';
 import ChatContainer from './components/ChatContainer';
+import SentinelDashboard from './components/SentinelDashboard';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const App = () => {
+  const [activeTab, setActiveTab] = useState('chat'); // 'chat' or 'sentinel'
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -116,30 +118,49 @@ const App = () => {
     >
       {/* Header with Dashboard Controls */}
       <header className="h-20 bg-white/80 backdrop-blur-md border-b border-slate-100 px-8 flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center gap-4">
-          <div className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse shadow-[0_0_8px_rgba(37,99,235,0.6)]" />
-          <div className="flex items-center gap-3">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Context: Global</span>
-            <span className="text-slate-200 text-xs font-black">/</span>
-            <span className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em]">Merchant Intelligence</span>
+        <div className="flex items-center gap-12">
+          <div className="flex items-center gap-4">
+            <div className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse shadow-[0_0_8px_rgba(37,99,235,0.6)]" />
+            <div className="flex items-center gap-3">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Context: Global</span>
+              <span className="text-slate-200 text-xs font-black">/</span>
+              <span className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em]">Merchant Intelligence</span>
+            </div>
           </div>
+          
+          <nav className="flex items-center bg-slate-100 p-1 rounded-2xl border border-slate-200 shadow-inner">
+            <button 
+              onClick={() => setActiveTab('chat')}
+              className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${activeTab === 'chat' ? 'bg-white text-blue-600 shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}
+            >
+              <Bot size={14} /> Strategic Chat
+            </button>
+            <button 
+              onClick={() => setActiveTab('sentinel')}
+              className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${activeTab === 'sentinel' ? 'bg-white text-blue-600 shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}
+            >
+              <Zap size={14} /> Sentinel Control
+            </button>
+          </nav>
         </div>
         
         <div className="flex items-center gap-6">
-          <div className="flex items-center bg-slate-100 p-1 rounded-full shadow-inner border border-slate-200">
-            <button 
-              onClick={() => setTransparencyMode(false)}
-              className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${!transparencyMode ? 'bg-white text-blue-600 shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}
-            >
-              Standard
-            </button>
-            <button 
-              onClick={() => setTransparencyMode(true)}
-              className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${transparencyMode ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' : 'text-slate-400 hover:text-slate-600'}`}
-            >
-              <Eye size={12} /> Transparency
-            </button>
-          </div>
+          {activeTab === 'chat' && (
+            <div className="flex items-center bg-slate-100 p-1 rounded-full shadow-inner border border-slate-200">
+              <button 
+                onClick={() => setTransparencyMode(false)}
+                className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${!transparencyMode ? 'bg-white text-blue-600 shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}
+              >
+                Standard
+              </button>
+              <button 
+                onClick={() => setTransparencyMode(true)}
+                className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${transparencyMode ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' : 'text-slate-400 hover:text-slate-600'}`}
+              >
+                <Eye size={12} /> Transparency
+              </button>
+            </div>
+          )}
           
           <div className="flex items-center gap-3 px-4 py-2 bg-blue-50 text-blue-600 rounded-xl border border-blue-100">
             <Shield size={14} fill="currentColor" />
@@ -148,14 +169,18 @@ const App = () => {
         </div>
       </header>
 
-      {/* Main Chat Canvas */}
-      <ChatContainer 
-        messages={messages}
-        input={input}
-        setInput={setInput}
-        sendMessage={sendMessage}
-        loading={loading}
-      />
+      {/* Main Canvas */}
+      {activeTab === 'chat' ? (
+        <ChatContainer 
+          messages={messages}
+          input={input}
+          setInput={setInput}
+          sendMessage={sendMessage}
+          loading={loading}
+        />
+      ) : (
+        <SentinelDashboard />
+      )}
     </Layout>
   );
 };

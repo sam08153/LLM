@@ -4,6 +4,7 @@ langchain
 langchain-openai
 langchain-community
 langchain-postgres
+langgraph
 pgvector
 psycopg2-binary
 pypdf
