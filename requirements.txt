@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+langchain
+langchain-openai
+langchain-community
+langchain-postgres
+pgvector
+psycopg2-binary
+pypdf
+pandas
+python-multipart
+python-dotenv
+openai
+lark
